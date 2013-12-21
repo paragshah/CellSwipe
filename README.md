@@ -3,6 +3,9 @@ CellSwipe
 
 Swipe left to reveal UIButtons under a UITableViewCell
 
+
+![CellSwipe in action](CellSwipe.gif)
+
 Works in iOS6 and iOS7. Only supports swiping left (although support for swiping right should be trivial).
 
 All UI controls are added programmatically, i.e. no use of the .xib.
