@@ -10,6 +10,9 @@
 #import "CSActionView.h"
 
 
+static const CGFloat PAN_ELASTICITY_STARTING_POINT = 80.0f;
+static const CGFloat PAN_ELASTICITY_FACTOR = 0.55f;
+
 typedef void (^HideActionViewAnimationCompleteCallback)(void);
 
 
@@ -79,7 +82,7 @@ typedef void (^HideActionViewAnimationCompleteCallback)(void);
     return !self.actionView.hidden;
 }
 
-- (void)hideActionViewWithAnimation:(BOOL)animated withCallback:(HideActionViewAnimationCompleteCallback)callback
+- (void)hideActionView:(BOOL)animated completion:(HideActionViewAnimationCompleteCallback)callback
 {
     CGFloat x = 0.0f;
     CGFloat y = self.contentView.frame.origin.y;
@@ -92,19 +95,19 @@ typedef void (^HideActionViewAnimationCompleteCallback)(void);
                      animations:^{
                          self.contentView.frame = CGRectMake(x, y, w, h);
                          [self.contentView layoutIfNeeded];
-                    } completion:^(BOOL finished) {
-                        [self.actionView setHidden:YES];
+                     } completion:^(BOOL finished) {
+        [self.actionView setHidden:YES];
 
-                        if (callback) {
-                            callback();
-                        }
-                    }
+        if (callback) {
+            callback();
+        }
+    }
     ];
 }
 
 #pragma mark - private methods
 
-- (void)showActionViewWithAnimation:(BOOL)animated
+- (void)showActionView:(BOOL)animated
 {
     CGFloat x = -1 * [self.actionView maxWidth];
     CGFloat y = self.contentView.frame.origin.y;
@@ -143,7 +146,7 @@ typedef void (^HideActionViewAnimationCompleteCallback)(void);
         [self.delegate tableViewCellMuteTapped:self];
     }
 
-    [self hideActionViewWithAnimation:YES withCallback:nil];
+    [self hideActionView:YES completion:nil];
 }
 
 - (BOOL)iOS7andUp
@@ -162,6 +165,7 @@ typedef void (^HideActionViewAnimationCompleteCallback)(void);
 
     CGPoint touchPoint = [recognizer locationInView:self.contentView];
     CGFloat touchPositionX = touchPoint.x;
+    CGFloat maxWidth = -1 * [self.actionView maxWidth];
 
     if (recognizer.state == UIGestureRecognizerStateBegan) {
         if ([self.delegate respondsToSelector:@selector(tableViewCellSwipeStarted:)]) {
@@ -178,37 +182,46 @@ typedef void (^HideActionViewAnimationCompleteCallback)(void);
             return;
         }
 
-        CGPoint velocity = [recognizer velocityInView:self.contentView];
-        CGFloat delta = (CGFloat)fabs(touchPositionX - _currentTouchPositionX);
-        CGFloat x = self.contentView.frame.origin.x;
-        CGFloat y = self.contentView.frame.origin.y;
-        CGFloat w = self.contentView.frame.size.width;
-        CGFloat h = self.contentView.frame.size.height;
-        CGRect newContentFrame = self.contentView.frame;
+        CGPoint translation = [recognizer translationInView:recognizer.view];
+        CGFloat panOffset = translation.x;
 
-        if (velocity.x < 0.0f) { // swiping left
-            CGFloat maxWidth = -1 * [self.actionView maxWidth];
-            newContentFrame = CGRectMake(MAX(x - delta, maxWidth), y, w, h);
-        } else if (x < 0.0f) {
-            newContentFrame = CGRectMake(MIN(0.0f, x + delta), y, w, h);
+        if (ABS(translation.x) > PAN_ELASTICITY_STARTING_POINT) {
+            CGFloat width = CGRectGetWidth(self.frame);
+            CGFloat offset = abs(translation.x);
+            panOffset = (offset * PAN_ELASTICITY_FACTOR * width) / (offset * PAN_ELASTICITY_FACTOR + width);
+            panOffset *= translation.x < 0 ? -1.0f : 1.0f;
+            if (PAN_ELASTICITY_STARTING_POINT > 0) {
+                panOffset = translation.x > 0
+                        ? panOffset + PAN_ELASTICITY_STARTING_POINT / 2
+                        : panOffset - PAN_ELASTICITY_STARTING_POINT / 2;
+            }
         }
 
-        UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveLinear;
-        [UIView animateWithDuration:0.01f
-                              delay:0
-                            options:options
-                         animations:^{
-                             self.contentView.frame = newContentFrame;
-                         } completion:nil];
+        CGPoint actualTranslation = CGPointMake(panOffset, translation.y);
 
-        _currentTouchPositionX = touchPositionX;
+        if (actualTranslation.x < 0) {
+            if (self.contentView.frame.origin.x != maxWidth || actualTranslation.x < maxWidth) {
+                self.contentView.frame = CGRectOffset(self.contentView.bounds, actualTranslation.x, 0);
+            }
+        } else {
+            CGFloat delta = (CGFloat)fabs(touchPositionX - _currentTouchPositionX);
+            CGRect frame = self.contentView.frame;
+            frame.origin.x = MIN(0, frame.origin.x + delta);
+            self.contentView.frame = frame;
+        }
 
     } else if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled) {
-        CGFloat minWidth = (-1 * [self.actionView maxWidth] / 3);
+        CGFloat minWidth = maxWidth / 3;
         if (self.contentView.frame.origin.x < minWidth) {
-            [self showActionViewWithAnimation:YES];
+            [self showActionView:YES];
         } else {
-            [self hideActionViewWithAnimation:YES withCallback:nil];
+            [self hideActionView:YES completion:nil];
+        }
+
+        if (self.contentView.frame.origin.x < minWidth) {
+            [self showActionView:YES];
+        } else {
+            [self hideActionView:YES completion:nil];
         }
     }
 }

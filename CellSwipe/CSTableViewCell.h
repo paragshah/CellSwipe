@@ -24,6 +24,6 @@
 @property (weak, nonatomic) id<CSTableViewCellDelegate> delegate;
 @property (assign, nonatomic) BOOL actionViewIsVisible;
 
--(void)hideActionViewWithAnimation:(BOOL)animated withCallback:(void(^)(void))callback;
+-(void)hideActionView:(BOOL)animated completion:(void(^)(void))callback;
 
 @end

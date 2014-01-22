@@ -47,7 +47,7 @@ static NSString * const CELL_IDENTIFIER = @"Cell";
 -(void)hideActionViewForSwipedCell
 {
     if (self.swipedCell) {
-        [self.swipedCell hideActionViewWithAnimation:YES withCallback:^{
+        [self.swipedCell hideActionView:YES completion:^{
             self.swipedCell = nil;
         }];
     }
