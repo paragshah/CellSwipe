@@ -26,3 +26,6 @@ Here's how it works:
 7. If the user scrolls the UITableView while a UITableViewCell is showing UIButtons, that cell will slide back.
 
 8. If the user highlights any UITableViewCell while any UITableViewCell is showing UIButtons, that cell will slide back.
+
+Update, Jan. 22, 2014:
+- Added elastic effect when swiping cell to better match native iOS apps (e.g. Mail app).
